@@ -244,7 +244,7 @@
         </spacer>
        </item>
        <item>
-        <widget class="QPushButton" name="openResultTableButton">
+        <widget class="QPushButton" name="saveResultTableButton">
          <property name="sizePolicy">
           <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
            <horstretch>0</horstretch>
@@ -260,7 +260,7 @@
           </font>
          </property>
          <property name="text">
-          <string>Открыть таблицу с координатами</string>
+          <string>Сохранить таблицу с координатами</string>
          </property>
          <property name="default">
           <bool>false</bool>

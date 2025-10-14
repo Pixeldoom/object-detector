@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 ################################################################################
-## Form generated from reading UI file 'mainWindow.view'
+## Form generated from reading UI file 'mainWindow.ui'
 ##
 ## Created by: Qt User Interface Compiler version 6.9.2
 ##
@@ -122,19 +122,19 @@ class Ui_MainWindow(object):
 
         self.verticalLayout.addItem(self.horizontalSpacer)
 
-        self.openResultTableButton = QPushButton(self.horizontalLayoutWidget_2)
-        self.openResultTableButton.setObjectName(u"openResultTableButton")
-        sizePolicy.setHeightForWidth(self.openResultTableButton.sizePolicy().hasHeightForWidth())
-        self.openResultTableButton.setSizePolicy(sizePolicy)
+        self.saveResultTableButton = QPushButton(self.horizontalLayoutWidget_2)
+        self.saveResultTableButton.setObjectName(u"saveResultTableButton")
+        sizePolicy.setHeightForWidth(self.saveResultTableButton.sizePolicy().hasHeightForWidth())
+        self.saveResultTableButton.setSizePolicy(sizePolicy)
         font1 = QFont()
         font1.setPointSize(13)
         font1.setBold(False)
         font1.setKerning(True)
         font1.setHintingPreference(QFont.PreferDefaultHinting)
-        self.openResultTableButton.setFont(font1)
-        self.openResultTableButton.setFlat(False)
+        self.saveResultTableButton.setFont(font1)
+        self.saveResultTableButton.setFlat(False)
 
-        self.verticalLayout.addWidget(self.openResultTableButton)
+        self.verticalLayout.addWidget(self.saveResultTableButton)
 
         self.saveResultImageButton = QPushButton(self.horizontalLayoutWidget_2)
         self.saveResultImageButton.setObjectName(u"saveResultImageButton")
@@ -154,7 +154,7 @@ class Ui_MainWindow(object):
 
         self.retranslateUi(MainWindow)
 
-        self.openResultTableButton.setDefault(False)
+        self.saveResultTableButton.setDefault(False)
 
 
         QMetaObject.connectSlotsByName(MainWindow)
@@ -168,7 +168,7 @@ class Ui_MainWindow(object):
         self.selectExampleImageButton.setText(QCoreApplication.translate("MainWindow", u"\u0412\u044b\u0431\u0440\u0430\u0442\u044c \u043e\u0431\u0440\u0430\u0437\u0435\u0446 \u0434\u043b\u044f \u043f\u043e\u0438\u0441\u043a\u0430", None))
         self.selectSearchImageButton.setText(QCoreApplication.translate("MainWindow", u"\u0412\u044b\u0431\u0440\u0430\u0442\u044c \u0438\u0437\u043e\u0431\u0440\u0430\u0436\u0435\u043d\u0438\u0435", None))
         self.runButton.setText(QCoreApplication.translate("MainWindow", u"\u0412\u044b\u043f\u043e\u043b\u043d\u0438\u0442\u044c \u043f\u043e\u0438\u0441\u043a \u043e\u0431\u044a\u0435\u043a\u0442\u0430", None))
-        self.openResultTableButton.setText(QCoreApplication.translate("MainWindow", u"\u041e\u0442\u043a\u0440\u044b\u0442\u044c \u0442\u0430\u0431\u043b\u0438\u0446\u0443 \u0441 \u043a\u043e\u043e\u0440\u0434\u0438\u043d\u0430\u0442\u0430\u043c\u0438", None))
+        self.saveResultTableButton.setText(QCoreApplication.translate("MainWindow", u"\u0421\u043e\u0445\u0440\u0430\u043d\u0438\u0442\u044c \u0442\u0430\u0431\u043b\u0438\u0446\u0443 \u0441 \u043a\u043e\u043e\u0440\u0434\u0438\u043d\u0430\u0442\u0430\u043c\u0438", None))
         self.saveResultImageButton.setText(QCoreApplication.translate("MainWindow", u"\u0421\u043e\u0445\u0440\u0430\u043d\u0438\u0442\u044c \u043f\u043e\u043b\u0443\u0447\u0435\u043d\u043d\u043e\u0435 \u0438\u0437\u043e\u0431\u0440\u0430\u0436\u0435\u043d\u0438\u0435", None))
     # retranslateUi
 
