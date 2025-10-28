@@ -1,11 +1,10 @@
 import cv2
-import csv
 from PySide6.QtCore import Qt
 from PySide6 import QtWidgets, QtGui
-from PySide6.QtWidgets import QMainWindow
 from view.mainWindow import Ui_MainWindow
-from export.csvExporter import CSVExporter
+from vision.processor import VisionProcessor
 from utility.image import Image as ImageUtility
+from PySide6.QtWidgets import QMainWindow, QMessageBox
 from utility.fileSystem import FileSystem as FileSystemUtility
 
 
@@ -17,6 +16,7 @@ class MainWindow(QMainWindow):
         self._selectedSearchImagePath = None
         self._resultImage = None
         self._matchLocation = None
+        self._foundObjects = []
 
         self.ui = Ui_MainWindow()
         self.ui.setupUi(self)
@@ -43,7 +43,7 @@ class MainWindow(QMainWindow):
             if not ImageUtility.checkIsImage(filePath):
                 raise Exception("Файл не найден или он не является изображением")
         except Exception as err:
-            QtWidgets.QMessageBox.critical(self, 'Ошибка', err.__str__())
+            QMessageBox.critical(self, 'Ошибка', err.__str__())
             return
 
         self._selectedExampleImagePath = filePath
@@ -72,10 +72,12 @@ class MainWindow(QMainWindow):
             if not ImageUtility.checkIsImage(filePath):
                 raise Exception("Файл не найден или он не является изображением")
         except Exception as err:
-            QtWidgets.QMessageBox.critical(self, 'Ошибка', err.__str__())
+            QMessageBox.critical(self, 'Ошибка', err.__str__())
             return
 
         self._selectedSearchImagePath = filePath
+        self._resultImage = None
+        self._foundObjects = []
 
         self.ui.searchImageLabel.setPixmap(
             QtGui.QPixmap(filePath).scaled(
@@ -86,104 +88,103 @@ class MainWindow(QMainWindow):
         )
 
     def onRunButtonClicked(self):
-        if not self._selectedExampleImagePath or not self._selectedSearchImagePath:
-            QtWidgets.QMessageBox.warning(self, "Предупреждение", "Пожалуйста, выберите оба изображения.")
+        if not self._selectedSearchImagePath:
+            QMessageBox.warning(self, "Предупреждение", "Пожалуйста, выберите изображение для анализа.")
             return
 
         try:
-            template = ImageUtility.readUnicode(self._selectedExampleImagePath)
             image = ImageUtility.readUnicode(self._selectedSearchImagePath)
-
-            if template is None or image is None:
-                raise Exception("Не удалось загрузить одно из изображений.")
-
-            templateHeight, templateWidth = template.shape[:2]
-            imageHeight, imageWidth = image.shape[:2]
-
-
-            if templateHeight > imageHeight or templateWidth > imageWidth:
-                raise Exception("Изображение-образец больше, чем изображение для поиска.")
-
-            result = cv2.matchTemplate(image, template, cv2.TM_CCOEFF_NORMED)
-            _, maxVal, _, maxLoc = cv2.minMaxLoc(result)
-
-            threshold = 0.4
-            if maxVal < threshold:
-                QtWidgets.QMessageBox.information(self, "Результат", "Образец не найден на изображении.")
-                return
-
-            bottomRight = (maxLoc[0] + templateWidth, maxLoc[1] + templateHeight)
+            if image is None:
+                raise Exception("Не удалось загрузить изображение для анализа.")
 
             resultImage = image.copy()
-            cv2.rectangle(resultImage, maxLoc, bottomRight, (0, 255, 0), 2)
+            self._foundObjects = [] # Очищаем предыдущие результаты
+
+            # --- 1. Поиск по образцу ("Фоторобот") ---
+            if self._selectedExampleImagePath:
+                template = ImageUtility.readUnicode(self._selectedExampleImagePath)
+                if template is not None:
+                    foundCorners = VisionProcessor.findObjectByFeatures(template, image)
+                    if foundCorners is not None:
+                        cv2.polylines(resultImage, [foundCorners], True, (255, 0, 0), 3, cv2.LINE_AA)
+                        x, y, w, h = cv2.boundingRect(foundCorners)
+                        self._foundObjects.append({'class': 'custom_object', 'box': (x, y, w, h)})
+
+            # --- 2. Поиск лиц с помощью каскада Хаара ---
+            faceCascadePath = 'vision/cascades/haarcascade_frontalface_default.xml'
+            faces = VisionProcessor.findObjectsByHaar(image, faceCascadePath)
+            for (x, y, w, h) in faces:
+                cv2.rectangle(resultImage, (x, y), (x + w, y + h), (0, 255, 0), 2)
+                cv2.putText(resultImage, 'Face', (x, y-10), cv2.FONT_HERSHEY_SIMPLEX, 0.9, (0,255,0), 2)
+                self._foundObjects.append({'class': 'face', 'box': (x, y, w, h)})
+
+            # --- 3. Поиск глаз внутри найденных лиц ---
+            eyeCascadePath = 'vision/cascades/haarcascade_eye.xml'
+            for (fx, fy, fw, fh) in faces:
+                faceRoi = image[fy:fy+fh, fx:fx+fw] # Область лица
+                eyes = VisionProcessor.findObjectsByHaar(faceRoi, eyeCascadePath)
+                for (ex, ey, ew, eh) in eyes:
+                    # Координаты глаз относительно всего изображения
+                    cv2.rectangle(resultImage, (fx + ex, fy + ey), (fx + ex + ew, fy + ey + eh), (0, 0, 255), 2)
+                    self._foundObjects.append({'class': 'eye', 'box': (fx + ex, fy + ey, ew, eh)})
+
+            if not self._foundObjects:
+                QMessageBox.information(self, "Результат", "На изображении ничего не найдено.")
+                return
 
             self._resultImage = resultImage
-            self._matchLocation = (maxLoc, bottomRight, maxVal)
-
-            resultImageRGB = cv2.cvtColor(resultImage, cv2.COLOR_BGR2RGB)
-            h, w, ch = resultImageRGB.shape
-            bytesPerLine = ch * w
-            qImg = QtGui.QImage(resultImageRGB.data, w, h, bytesPerLine, QtGui.QImage.Format.Format_RGB888)
-
-            pixmap = QtGui.QPixmap.fromImage(qImg).scaled(
-                self.ui.resultImageLabel.width(),
-                self.ui.resultImageLabel.height(),
-                Qt.AspectRatioMode.KeepAspectRatio,
-                Qt.TransformationMode.SmoothTransformation
-            )
-            self.ui.resultImageLabel.setPixmap(pixmap)
+            self.displayImage(self._resultImage, self.ui.resultImageLabel)
 
         except Exception as e:
-            QtWidgets.QMessageBox.critical(self, "Ошибка", str(e))
+            QMessageBox.critical(self, "Ошибка", f"Произошла ошибка во время анализа:\n{str(e)}")
+
+    def displayImage(self, imageCV, label):
+        imageRGB = cv2.cvtColor(imageCV, cv2.COLOR_BGR2RGB)
+        h, w, ch = imageRGB.shape
+        bytesPerLine = ch * w
+        qImg = QtGui.QImage(imageRGB.data, w, h, bytesPerLine, QtGui.QImage.Format.Format_RGB888)
+        pixmap = QtGui.QPixmap.fromImage(qImg).scaled(
+            label.width(), label.height(), Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation
+        )
+        label.setPixmap(pixmap)
+
 
     def onSaveResultTableButtonClicked(self):
-        if not hasattr(self, '_matchLocation') or self._matchLocation is None:
-            QtWidgets.QMessageBox.warning(self, "Ошибка", "Нет данных для экспорта. Сначала выполните поиск.")
+        if not self._foundObjects:
+            QMessageBox.warning(self, "Ошибка", "Нет данных для экспорта. Сначала выполните анализ.")
             return
-
-        topLeft, bottomRight, maxVal = self._matchLocation
 
         filePath, _ = QtWidgets.QFileDialog.getSaveFileName(
-            parent=self,
-            caption="Сохранить результаты поиска",
-            filter="CSV файлы (*.csv);;Все файлы (*)"
+            parent=self, caption="Сохранить результаты", filter="CSV файлы (*.csv);;Все файлы (*)"
         )
-
-        if not filePath:
-            return
-
-        if not filePath.lower().endswith('.csv'):
-            filePath += '.csv'
+        if not filePath: return
+        if not filePath.lower().endswith('.csv'): filePath += '.csv'
 
         try:
-            CSVExporter.exportMatchResult(filePath, topLeft, bottomRight, maxVal)
-
-            QtWidgets.QMessageBox.information(self, "Успех", f"Результаты сохранены в:\n{filePath}")
-
+            import csv
+            with open(filePath, mode='w', newline='', encoding='utf-8') as csvfile:
+                writer = csv.writer(csvfile)
+                writer.writerow(["Class", "Top_Left_X", "Top_Left_Y", "Width", "Height"])
+                for obj in self._foundObjects:
+                    x, y, w, h = obj['box']
+                    writer.writerow([obj['class'], x, y, w, h])
+            QMessageBox.information(self, "Успех", f"Результаты сохранены в:\n{filePath}")
         except Exception as e:
-            QtWidgets.QMessageBox.critical(self, "Ошибка", f"Не удалось сохранить CSV:\n{str(e)}")
+            QMessageBox.critical(self, "Ошибка", f"Не удалось сохранить CSV:\n{str(e)}")
 
     def onSaveResultImageButtonClicked(self):
-        if self._resultImage is None or self._resultImage.size == 0:
-            QtWidgets.QMessageBox.warning(self, "Ошибка", "Нет результата для сохранения. Сначала выполните поиск.")
+        if self._resultImage is None:
+            QMessageBox.warning(self, "Ошибка", "Нет результата для сохранения.")
             return
 
         filePath, _ = QtWidgets.QFileDialog.getSaveFileName(
-            parent=self,
-            caption="Сохранить результат поиска",
-            filter=f"Изображения ({' '.join(f'*.{ext}' for ext in ImageUtility.allowedTypes)});;Все файлы (*)"
+            parent=self, caption="Сохранить изображение", filter=f"Изображения ({' '.join(f'*.{ext}' for ext in ImageUtility.allowedTypes)});;Все файлы (*)"
         )
-
-        if not filePath:
-            return  # Отмена
-
-        if not filePath.lower().endswith(tuple(ImageUtility.allowedTypes)):
-            filePath += '.png'
-
+        if not filePath: return
         try:
-            success = ImageUtility.writeUnicode(filePath, self._resultImage)
-            if not success:
+            if ImageUtility.writeUnicode(filePath, self._resultImage):
+                QMessageBox.information(self, "Успех", f"Изображение сохранено:\n{filePath}")
+            else:
                 raise Exception("Не удалось записать файл изображения.")
-            QtWidgets.QMessageBox.information(self, "Успех", f"Изображение сохранено:\n{filePath}")
         except Exception as e:
-            QtWidgets.QMessageBox.critical(self, "Ошибка", f"Ошибка при сохранении изображения:\n{str(e)}")
+            QMessageBox.critical(self, "Ошибка", f"Ошибка при сохранении:\n{str(e)}")
