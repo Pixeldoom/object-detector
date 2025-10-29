@@ -1,6 +1,5 @@
 import os
 import cv2
-import imghdr
 import numpy as np
 from utility.fileSystem import FileSystem as FileSystemUtility
 
@@ -28,9 +27,9 @@ class Image:
             return False
 
         # Определение типа файла
-        imageType = imghdr.what(filePath)
+        image = cls.readUnicode(filePath)
 
-        return bool(imageType in cls.allowedTypes)
+        return image is not None
 
     @classmethod
     def readUnicode(cls, path: str):
