@@ -111,7 +111,7 @@ class MainWindow(QMainWindow):
                         self._foundObjects.append({'class': 'custom_object', 'box': (x, y, w, h)})
 
             # --- 2. Поиск лиц с помощью каскада Хаара ---
-            faceCascadePath = 'vision/cascades/haarcascade_frontalface_default.xml'
+            faceCascadePath = FileSystemUtility.resourcePath('vision/cascades/haarcascade_frontalface_default.xml')
             faces = VisionProcessor.findObjectsByHaar(image, faceCascadePath)
             for (x, y, w, h) in faces:
                 cv2.rectangle(resultImage, (x, y), (x + w, y + h), (0, 255, 0), 2)
@@ -119,7 +119,7 @@ class MainWindow(QMainWindow):
                 self._foundObjects.append({'class': 'face', 'box': (x, y, w, h)})
 
             # --- 3. Поиск глаз внутри найденных лиц ---
-            eyeCascadePath = 'vision/cascades/haarcascade_eye.xml'
+            eyeCascadePath = FileSystemUtility.resourcePath('vision/cascades/haarcascade_eye.xml')
             for (fx, fy, fw, fh) in faces:
                 faceRoi = image[fy:fy+fh, fx:fx+fw] # Область лица
                 eyes = VisionProcessor.findObjectsByHaar(faceRoi, eyeCascadePath)
